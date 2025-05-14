@@ -1,0 +1,247 @@
+
+
+>>!nvidia-smi
+     
+Tue May  6 05:36:29 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 550.54.15              Driver Version: 550.54.15      CUDA Version: 12.4     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |
+| N/A   66C    P8             11W /   70W |       0MiB /  15360MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+>>%%writefile vector_add.cu
+#include 
+#include 
+#include 
+
+using namespace std;
+using namespace std::chrono;
+
+// CUDA kernel
+__global__ void vectorAdd(int* A, int* B, int* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        C[i] = A[i] + B[i];
+    }
+}
+
+int main() {
+    int n;
+    cout << "Enter size of vectors: ";
+    cin >> n;
+
+    size_t size = n * sizeof(int);
+
+    // Host memory
+    int* h_A = (int*)malloc(size);
+    int* h_B = (int*)malloc(size);
+    int* h_C = (int*)malloc(size);
+
+    cout << "Enter elements for Vector A:\n";
+    for (int i = 0; i < n; i++) cin >> h_A[i];
+
+    cout << "Enter elements for Vector B:\n";
+    for (int i = 0; i < n; i++) cin >> h_B[i];
+
+    // Device memory
+    int *d_A, *d_B, *d_C;
+    cudaMalloc((void**)&d_A, size);
+    cudaMalloc((void**)&d_B, size);
+    cudaMalloc((void**)&d_C, size);
+
+    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+    auto start = high_resolution_clock::now();
+    vectorAdd<<>>(d_A, d_B, d_C, n);
+    cudaDeviceSynchronize();
+    auto end = high_resolution_clock::now();
+
+    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    cout << "\nVector Addition Result (first 10 elements):\n";
+    for (int i = 0; i < min(n, 10); i++) {
+        cout << h_A[i] << " + " << h_B[i] << " = " << h_C[i] << endl;
+    }
+
+    auto duration = duration_cast(end - start);
+    cout << "\nTime taken by GPU (in milliseconds): " << duration.count() << " ms" << endl;
+
+    // Free memory
+    cudaFree(d_A); cudaFree(d_B); cudaFree(d_C);
+    free(h_A); free(h_B); free(h_C);
+
+    return 0;
+}
+
+
+     
+Overwriting vector_add.cu
+
+
+>>!nvcc -arch=sm_75 vector_add.cu -o vector_add
+     
+
+>>!./vector_add
+     
+Enter size of vectors: 3
+Enter elements for Vector A:
+1
+2
+3
+Enter elements for Vector B:
+4
+5
+6
+
+Vector Addition Result (first 10 elements):
+1 + 4 = 5
+2 + 5 = 7
+3 + 6 = 9
+
+Time taken by GPU (in milliseconds): 0 ms
+
+>>%%writefile matrix_multiplication.cu
+
+#include 
+#include 
+#include 
+#include 
+using namespace std;
+using namespace chrono;
+
+// CUDA kernel to multiply matrices A and B into C
+__global__ void matrixMulKernel(int* A, int* B, int* C, int M, int N, int P) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y; // Row of C
+    int col = blockIdx.x * blockDim.x + threadIdx.x; // Column of C
+
+    if (row < M && col < P) {
+        int sum = 0;
+        for (int k = 0; k < N; ++k) {
+            sum += A[row * N + k] * B[k * P + col];
+        }
+        C[row * P + col] = sum;
+    }
+}
+
+int main() {
+    int M, N, P;
+    cout << "Enter dimensions of Matrix A (MxN):\n";
+    cin >> M >> N;
+    cout << "Enter number of columns for Matrix B (NxP):\n";
+    cin >> P;
+
+    int *h_A = new int[M * N];
+    int *h_B = new int[N * P];
+    int *h_C = new int[M * P];
+
+    // Take input from user
+    cout << "Enter elements of Matrix A (" << M << "x" << N << "):\n";
+    for (int i = 0; i < M * N; i++)
+        cin >> h_A[i];
+
+    cout << "Enter elements of Matrix B (" << N << "x" << P << "):\n";
+    for (int i = 0; i < N * P; i++)
+        cin >> h_B[i];
+
+    // Allocate device memory
+    int *d_A, *d_B, *d_C;
+    size_t size_A = M * N * sizeof(int);
+    size_t size_B = N * P * sizeof(int);
+    size_t size_C = M * P * sizeof(int);
+
+    cudaMalloc((void**)&d_A, size_A);
+    cudaMalloc((void**)&d_B, size_B);
+    cudaMalloc((void**)&d_C, size_C);
+
+    // Copy data to device
+    cudaMemcpy(d_A, h_A, size_A, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size_B, cudaMemcpyHostToDevice);
+
+    // Define block and grid dimensions
+    dim3 threadsPerBlock(16, 16); // 256 threads per block
+    dim3 blocksPerGrid((P + 15) / 16, (M + 15) / 16);
+
+    // Measure time
+    auto start = high_resolution_clock::now();
+
+    // Launch the CUDA kernel
+    matrixMulKernel<<>>(d_A, d_B, d_C, M, N, P);
+
+    cudaDeviceSynchronize(); // Wait for GPU to finish
+
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast(end - start);
+
+    // Copy result back to host
+    cudaMemcpy(h_C, d_C, size_C, cudaMemcpyDeviceToHost);
+
+    // Display result
+    cout << "\nResultant Matrix C (" << M << "x" << P << "):\n";
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < P; j++) {
+            cout << h_C[i * P + j] << "\t";
+        }
+        cout << "\n";
+    }
+
+    cout << "\nTime taken by GPU: " << duration.count() << " microseconds\n";
+
+    // Thread information
+    cout << "Threads per Block: " << threadsPerBlock.x * threadsPerBlock.y << "\n";
+    cout << "Total Threads (approx): " << blocksPerGrid.x * blocksPerGrid.y * threadsPerBlock.x * threadsPerBlock.y << "\n";
+
+    // Cleanup
+    cudaFree(d_A); cudaFree(d_B); cudaFree(d_C);
+    delete[] h_A; delete[] h_B; delete[] h_C;
+
+    return 0;
+}
+
+     
+Writing matrix_multiplication.cu
+
+
+>>!nvcc -arch=sm_75 matrix_multiplication.cu -o matrix_multiplication
+     
+
+>>!./matrix_multiplication
+     
+Enter dimensions of Matrix A (MxN):
+3 3
+Enter number of columns for Matrix B (NxP):
+3
+Enter elements of Matrix A (3x3):
+1 2 3
+4 5 6
+7 8 9
+Enter elements of Matrix B (3x3):
+9 8 7
+6 5 4
+3 2 1
+
+Resultant Matrix C (3x3):
+30	24	18	
+84	69	54	
+138	114	90	
+
+Time taken by GPU: 148 microseconds
+Threads per Block: 256
+Total Threads (approx): 256
