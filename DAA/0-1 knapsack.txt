@@ -1,0 +1,41 @@
+def knapSack(W, wt, val, n):
+    # Base Case
+    if n == 0 or W == 0:
+        return 0
+
+    # If weight of the nth item is more than Knapsack capacity W, exclude it
+    if (wt[n-1] > W):
+        return knapSack(W, wt, val, n-1)
+
+    # Return the maximum of two cases: (1) nth item included (2) not included
+    else:
+        return max(
+            val[n-1] + knapSack(W - wt[n-1], wt, val, n-1),
+            knapSack(W, wt, val, n-1)
+        )
+
+# Get input from user
+if __name__ == '__main__':
+    # Number of items
+    print("Enter the number of items:")
+    n = int(input())
+
+    # Profits (values) of items
+    print("Enter the profits/values of items separated by spaces (e.g., '60 100 120'):")
+    profit = list(map(int, input().split()))
+
+    # Weights of items
+    print("Enter the weights of items separated by spaces (e.g., '10 20 30'):")
+    weight = list(map(int, input().split()))
+
+    # Capacity of the knapsack
+    print("Enter the capacity of the knapsack:")
+    W = int(input())
+
+    # Ensure input lists match the specified number of items
+    if len(profit) != n or len(weight) != n:
+        print("Error: Number of profits and weights must match the number of items.")
+    else:
+        # Calculate and print the maximum profit
+        max_profit = knapSack(W, weight, profit, n)
+        print(f"Maximum profit in knapsack = {max_profit}")

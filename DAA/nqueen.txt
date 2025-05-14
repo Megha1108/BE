@@ -1,0 +1,68 @@
+# Function to print the N-Queens solution
+def print_board(board):
+    for row in board:
+        print(" ".join(["Q" if x else "." for x in row]))
+    print()
+ 
+# Function to check if a queen can be placed at position (row, col)
+def is_safe(board, row, col):
+    # Check this column on upper side
+    for i in range(row):
+        if board[i][col] == 1:
+            return False
+ 
+    # Check upper left diagonal
+    for i, j in zip(range(row-1, -1, -1), range(col-1, -1, -1)):
+        if board[i][j] == 1:
+            return False
+ 
+    # Check upper right diagonal
+    for i, j in zip(range(row-1, -1, -1), range(col+1, len(board))):
+        if board[i][j] == 1:
+            return False
+ 
+    return True
+ 
+# Backtracking function to place queens
+def solve_nqueens(board, row):
+    # If all queens are placed
+    if row == len(board):
+        print_board(board)
+        return True
+ 
+    res = False
+    # Try placing queen in each column one by one
+    for col in range(len(board)):
+        if is_safe(board, row, col):
+            # Place queen
+            board[row][col] = 1
+ 
+            # Recur to place the next queen
+            res = solve_nqueens(board, row + 1) or res
+ 
+            # Backtrack if placing queen doesn't lead to a solution
+            board[row][col] = 0
+ 
+    return res
+ 
+# Function to solve the N-Queens problem
+def solve_nqueens_dynamic():
+    # Initialize an 8x8 board with all positions set to 0
+    size = 8
+    board = [[0 for _ in range(size)] for _ in range(size)]
+ 
+    # Take dynamic input for the position of the first queen
+    first_queen_row = int(input("Enter the row (0 to 7) to place the first queen: "))
+    first_queen_col = int(input("Enter the column (0 to 7) to place the first queen: "))
+ 
+    # Check if the input position is within bounds
+    if 0 <= first_queen_row < size and 0 <= first_queen_col < size:
+        board[first_queen_row][first_queen_col] = 1
+        # Start solving from the second row (row 1)
+        if not solve_nqueens(board, 1):
+            print("No solution found")
+    else:
+        print("Invalid position for the first queen. Please enter values between 0 and 7.")
+ 
+# Driver Code
+solve_nqueens_dynamic()

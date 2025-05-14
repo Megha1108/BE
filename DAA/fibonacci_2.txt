@@ -1,0 +1,64 @@
+import time
+import tracemalloc
+
+# Non-recursive (Iterative) function to calculate and print Fibonacci series
+def fibonacci_iterative(n):
+    a, b = 0, 1
+    for i in range(n):
+        print(a, end=' ')
+        a, b = b, a + b
+    print()  # To move to the next line after printing the series
+
+# Recursive function to calculate and return Fibonacci series as a list
+def fibonacci_recursive(n):
+    if n == 0:
+        return []
+    elif n == 1:
+        return [0]
+    elif n == 2:
+        return [0, 1]
+    else:
+        fib = fibonacci_recursive(n - 1)
+        fib.append(fib[-1] + fib[-2])
+        return fib
+
+# Function to measure time and space complexity
+def measure_time_and_space(func, n):
+    tracemalloc.start()  # Start memory tracking
+    start_time = time.time()  # Start time tracking
+
+    # Execute the function
+    result = func(n)
+
+    end_time = time.time()  # End time tracking
+    current, peak = tracemalloc.get_traced_memory()  # Get current and peak memory usage
+    tracemalloc.stop()  # Stop memory tracking
+
+    # Print results
+    time_taken = end_time - start_time
+    memory_used = peak / 1024  # Convert bytes to kilobytes for readability
+
+    # Display the results
+    print(f"{func.__name__} (n={n}):")
+    if isinstance(result, list):
+        print(f"Fibonacci series up to {n} numbers: {result}")
+    print(f"Execution time: {time_taken:.6f} seconds")
+    print(f"Peak memory usage: {memory_used:.2f} KB\n")
+
+# Get the user's choice
+choice = int(input("1: non-recursive, 2: recursive = "))
+
+# Input: Fibonacci term count
+n = int(input("Enter nth Fibonacci term: "))
+
+# Check choice and call the corresponding function with space and time tracking
+if choice == 1:
+    print("Iterative approach:")
+    measure_time_and_space(fibonacci_iterative, n)
+
+elif choice == 2:
+    print("Recursive approach:")
+    measure_time_and_space(fibonacci_recursive, n)
+
+else:
+    print("Wrong input")
